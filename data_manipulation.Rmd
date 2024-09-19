@@ -215,7 +215,9 @@ filter(select(janitor::clean_names(read_csv("data_import_examples/FAS_litters.cs
 
 ```
 
-Do **this** instead! This is great as long as you fully understand what each of these functions does. Note that you don't have to reference the data frame again in the parameters for the other commands.
+Do **this** instead! This is great as long as you fully understand what each of these functions does. Note that you don't have to reference the data frame again in the parameters for the other commands. The nesting approach turns into a much easier-to-read sequential chain.
+
+**Note: piping only works if every argument is a data frame** -- you'll have to specify the data frame you're using if you try to pipe something like a linear model.
 
 ```{r}
 
@@ -225,6 +227,22 @@ litters_df =
     select(-pups_born_alive) %>% 
     filter(group == "Con7") %>% 
     mutate(wt_gain = gd18_weight - gd0_weight)
+
+```
+## Bonus: Data Export
+
+Use the `write_csv()` function.
+
+```{r}
+
+litters_df = 
+    read_csv("./data_import_examples/FAS_litters.csv", na = c("NA", ".", "")) %>% 
+    janitor::clean_names() %>% 
+    select(-pups_born_alive) %>% 
+    filter(group == "Con7") %>% 
+    mutate(wt_gain = gd18_weight - gd0_weight)
+
+write_csv(litters_df, "data_import_examples/cleaned_fas_litters.csv")
 
 ```
 
