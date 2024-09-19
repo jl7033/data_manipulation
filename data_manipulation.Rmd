@@ -10,3 +10,221 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse) #dplyr comes along with this
 ```
 
+This document will show how to **manipulate** data.
+
+Let's import the two datasets that we're going to manipulate.
+
+```{r}
+
+litters_df = 
+    read_csv("./data_import_examples/FAS_litters.csv", na = c("NA", ".", ""))
+
+litters_df = janitor::clean_names(litters_df)
+
+pups_df = 
+    read_csv("./data_import_examples/FAS_pups.csv", na = c("NA", ".", ""))
+
+pups_df = janitor::clean_names(pups_df)
+
+```
+## `select`
+
+Use `select() ` to select variables. It will create a new tibble with all rows and only the selected columns.
+
+```{r}
+
+select(litters_df, group, litter_number, gd0_weight)
+
+```
+
+The `select()` function can also select a group of columns, i.e. every column from **group** to **gd18_weight**, inclusive:
+
+```{r}
+
+select(litters_df, group:gd18_weight)
+
+```
+
+The "-" sign selects every column *except* the ones from **group** through **gd18_weight**, inclusive:
+
+```{r}
+
+select(litters_df, -(group:gd18_weight))
+
+```
+
+The starts_with parameter allows us to select every column that starts with a specific letter/string, while the contains parameters allows us to choose every column that has that letter/string within it:
+
+```{r}
+
+select(litters_df, starts_with("gd"))
+select(litters_df, contains("pups"))
+
+```
+
+We can also **rename** columns, either using `select()` or `rename()`. Put the new name first. `rename()` will bring back the entire tibble, while `select()` will bring back just the renamed column(s).
+
+```{r}
+
+select(litters_df, GROUP = group)
+rename(litters_df, GROUP = group)
+
+```
+We can also use "everything" to put the rest of the columns *after* the selected ones.
+
+```{r}
+
+select(litters_df, GROUP = group, zero = gd0_weight, everything())
+
+```
+
+## Learning Assessment 1
+
+```{r}
+
+select(pups_df, litter_number, sex, pd_ears)
+
+```
+
+
+## `filter`
+
+In contrast to `select()`, `filter()` works on rows instead of columns. `select()` works with variables, while `filter()` works with data points. 
+
+First, let's take the rows for which gd_of_birth is exactly 19.
+
+```{r}
+
+filter(litters_df, gd_of_birth == 19)
+
+```
+
+Now, let's try using inequalities:
+
+```{r}
+
+filter(litters_df, pups_born_alive > 8)
+filter(litters_df, pups_born_alive <= 4)
+filter(litters_df, pups_born_alive != 7)
+
+```
+Now, let's filter based on what group the mice are in. The \%in\% function allows us to 
+
+```{r}
+
+filter(litters_df, group == "Low8")
+filter(litters_df, group %in% c("Low7", "Low8"))
+
+```
+We can combine multiple criteria by simply adding another statement to the `filter()` command. For example, we can look for litters where the group is either Low7 or Low 8 **and** the number of pups born alive is exactly 8.
+
+```{r}
+
+filter(litters_df, group %in% c("Low7", "Low8"), pups_born_alive == 8)
+
+```
+
+We can also drop all rows with missing data by using the `drop_na()` command.
+
+```{r}
+
+drop_na(litters_df)
+
+```
+
+## Learning Assessment 2
+
+```{r}
+
+filter(pups_df, sex == 1)
+filter(pups_df, pd_walk < 11, sex == 2)
+
+```
+
+
+## `mutate`
+
+The `mutate()` command creates a new tibble with a new column that is based on at least one other column. For example, we can make a column called wt_gain, which represents the amount of weight the mice gained between time points 0 and 18.
+
+```{r}
+
+mutate(litters_df, wt_gain = gd18_weight - gd0_weight)
+
+```
+
+We can also do nonsensical stuff, like creating a column for the number of pups born alive, squared:
+
+```{r}
+
+mutate(litters_df, 
+       wt_gain = gd18_weight - gd0_weight,
+       sq_pups = pups_born_alive^2)
+
+```
+
+We can also use str_to_lower to convert all strings in the group column to entirely lowercase ones:
+
+```{r}
+
+mutate(litters_df, group = str_to_lower(group))
+
+```
+
+## Learning Assessment 3
+
+```{r}
+
+mutate(pups_df, pd_minus_7 = pd_pivot - 7, 
+       pd_sum = pd_ears + pd_eyes + pd_pivot + pd_walk)
+
+```
+
+## `arrange`
+
+This function sorts the dataset from lowest to highest, or from highest to lowest if `desc()` is used:
+
+```{r}
+
+arrange(litters_df, gd0_weight)
+arrange(litters_df, desc(gd0_weight))
+
+```
+## Piping
+
+Check out this code, which is a bit clunky and does everything one step at a time (don't do this)
+
+```{r}
+
+litters_df = 
+    read_csv("./data_import_examples/FAS_litters.csv", na = c("NA", ".", ""))
+
+litters_df = janitor::clean_names(litters_df)
+
+litters_df_var = select(litters_df, -pups_born_alive)
+
+litters_with_filter = filter(litters_df_var, group == "Con7")
+
+litters_wt_gain = mutate(litters_with_filter, wt_gain = gd18_weight - gd0_weight)
+
+```
+Definitely don't do this either:
+
+```{r}
+
+filter(select(janitor::clean_names(read_csv("data_import_examples/FAS_litters.csv", na = c("NA", ".", ""))), -pups_born_alive), group == "Con7")
+
+```
+
+Do **this** instead! This is great as long as you fully understand what each of these functions does. Note that you don't have to reference the data frame again in the parameters for the other commands.
+
+```{r}
+
+litters_df = 
+    read_csv("./data_import_examples/FAS_litters.csv", na = c("NA", ".", "")) %>% 
+    janitor::clean_names() %>% 
+    select(-pups_born_alive) %>% 
+    filter(group == "Con7") %>% 
+    mutate(wt_gain = gd18_weight - gd0_weight)
+
+```
+
